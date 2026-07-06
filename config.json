@@ -1,0 +1,47 @@
+{
+  "model": "gpt-4o-mini",
+  "theme": "券商营业部日常运营",
+  "tone": "专业、平实、亲切",
+  "hashtags": ["券商", "A股", "投资教育"],
+  "length": "150-220字",
+  "audience": "有投资需求的年轻用户，关注市场动态和理财教育",
+  "output_dir": "output",
+  "content_categories": [
+    "市场热点",
+    "新闻动态",
+    "IPO",
+    "投顾服务",
+    "投资者教育"
+  ],
+  "schedule": {
+    "time": "16:00",
+    "timezone": "Asia/Shanghai",
+    "enabled_categories": [
+      "市场热点",
+      "新闻动态",
+      "IPO",
+      "投顾服务",
+      "投资者教育",
+      "每日精选"
+    ]
+  },
+  "generation": {
+    "temperature": 0.8,
+    "max_tokens": 700,
+    "retry_count": 3,
+    "retry_delay_seconds": 5
+  },
+  "image": {
+    "enabled": true,
+    "model": "dall-e-3",
+    "size": "1024x1024",
+    "style": "vivid"
+  },
+  "data": {
+    "cache_minutes": 5,
+    "indices": ["000001", "399001", "399006"],
+    "top_sectors_count": 5,
+    "top_gainers_count": 10,
+    "top_news_count": 5
+  }
+}
