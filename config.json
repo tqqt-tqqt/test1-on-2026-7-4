@@ -1,11 +1,16 @@
 {
-  "model": "gpt-4o-mini",
+  "model": "deepseek-v4-flash",
   "theme": "券商营业部日常运营",
   "tone": "专业、平实、亲切",
-  "hashtags": ["券商", "A股", "投资教育"],
-  "length": "150-220字",
+  "hashtags": ["A股", "投资", "理财", "股票", "财经"],
+  "length": "700字左右",
   "audience": "有投资需求的年轻用户，关注市场动态和理财教育",
   "output_dir": "output",
+  "brokerage": {
+    "name": "广发证券 成都麓山大道营业部",
+    "slogan": "您的身边理财管家",
+    "contact": "预约1对1专业投顾"
+  },
   "content_categories": [
     "市场热点",
     "新闻动态",
@@ -27,7 +32,7 @@
   },
   "generation": {
     "temperature": 0.8,
-    "max_tokens": 700,
+    "max_tokens": 2000,
     "retry_count": 3,
     "retry_delay_seconds": 5
   },

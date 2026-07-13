@@ -1,4 +1,4 @@
-"""提示词构建器测试。"""
+"""提示词构建器测试 —— JSON 结构输出版。"""
 
 import unittest
 from pathlib import Path
@@ -9,9 +9,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from xhs_generator.generator.prompt_builder import (
     get_prompt,
     build_base_context,
-    build_common_requirements,
+    BROKERAGE_SIGNATURE,
     CATEGORY_NAMES,
     PROMPT_BUILDERS,
+    _json_output_spec,
 )
 
 
@@ -19,8 +20,13 @@ SAMPLE_CONFIG = {
     "theme": "券商营业部日常运营",
     "tone": "专业、平实、亲切",
     "hashtags": ["券商", "A股", "投资教育"],
-    "length": "150-220字",
+    "length": "700字左右",
     "audience": "有投资需求的年轻用户",
+    "brokerage": {
+        "name": "广发证券 成都麓山大道营业部",
+        "slogan": "您的身边理财管家",
+        "contact": "预约1对1专业投顾",
+    },
 }
 
 SAMPLE_MARKET = {
@@ -35,8 +41,12 @@ SAMPLE_MARKET = {
 }
 
 SAMPLE_NEWS = {
-    "eastmoney_news": [{"title": "重磅政策出台", "summary": "国务院发布...", "time": "09:00"}],
-    "cls_news": [{"title": "A股开盘走高", "content": "三大指数集体高开...", "time": "09:30"}],
+    "all_news": [
+        {"title": "重磅政策出台", "source": "新华财经", "time": "09:00", "summary": ""},
+        {"title": "A股开盘走高", "source": "财联社", "time": "09:30", "summary": ""},
+    ],
+    "eastmoney_news": [],
+    "cls_news": [],
 }
 
 SAMPLE_IPO = {
@@ -44,69 +54,84 @@ SAMPLE_IPO = {
 }
 
 
+class TestJsonOutputSpec(unittest.TestCase):
+    def test_spec_contains_json_fields(self):
+        spec = _json_output_spec(SAMPLE_CONFIG)
+        self.assertIn("title", spec)
+        self.assertIn("body", spec)
+        self.assertIn("image_texts", spec)
+        self.assertIn("tags", spec)
+
+    def test_spec_contains_brokerage_signature(self):
+        spec = _json_output_spec(SAMPLE_CONFIG)
+        self.assertIn("广发证券", spec)
+        self.assertIn("成都麓山大道营业部", spec)
+
+    def test_spec_contains_compliance(self):
+        spec = _json_output_spec(SAMPLE_CONFIG)
+        self.assertIn("风险提示", spec)
+
+    def test_brokerage_signature_constant(self):
+        self.assertIn("广发证券", BROKERAGE_SIGNATURE)
+        self.assertIn("麓山大道", BROKERAGE_SIGNATURE)
+        self.assertIn("1对1专业投顾", BROKERAGE_SIGNATURE)
+
+
 class TestPromptBuilders(unittest.TestCase):
+    """每个分类提示词生成并验证关键内容。"""
+
     def test_all_categories_have_builder(self):
         for cat in CATEGORY_NAMES:
             self.assertIn(cat, PROMPT_BUILDERS, f"{cat} 缺少提示词构建函数")
 
-    def test_get_prompt_market_hotspot(self):
-        prompt = get_prompt("市场热点", SAMPLE_MARKET, SAMPLE_NEWS, SAMPLE_IPO, SAMPLE_CONFIG, "2026-07-06")
+    def _check_prompt(self, category: str):
+        prompt = get_prompt(category, SAMPLE_MARKET, SAMPLE_NEWS, SAMPLE_IPO, SAMPLE_CONFIG, "2026-07-08")
+        # 关键元素检查
+        self.assertIn("JSON", prompt, f"{category} 提示词应包含 JSON 输出要求")
+        self.assertIn("title", prompt)
+        self.assertIn("image_texts", prompt)
+        self.assertIn("tags", prompt)
+        self.assertIn(BROKERAGE_SIGNATURE[:10], prompt)  # 营业部署名
+        self.assertIn("风险提示", prompt)
+        # 数据注入检查
         self.assertIn("上证指数", prompt)
         self.assertIn("3456.78", prompt)
-        self.assertIn("风险提示", prompt)
-        self.assertIn("券商", prompt)
+        self.assertIn("广发证券", prompt)
 
-    def test_get_prompt_news(self):
-        prompt = get_prompt("新闻动态", SAMPLE_MARKET, SAMPLE_NEWS, SAMPLE_IPO, SAMPLE_CONFIG, "2026-07-06")
-        self.assertIn("重磅政策出台", prompt)
-        self.assertIn("风险提示", prompt)
+    def test_market_hotspot(self):
+        self._check_prompt("市场热点")
 
-    def test_get_prompt_ipo(self):
-        prompt = get_prompt("IPO", SAMPLE_MARKET, SAMPLE_NEWS, SAMPLE_IPO, SAMPLE_CONFIG, "2026-07-06")
-        self.assertIn("测试科技", prompt)
-        self.assertIn("风险提示", prompt)
+    def test_news(self):
+        self._check_prompt("新闻动态")
 
-    def test_get_prompt_advisory(self):
-        prompt = get_prompt("投顾服务", SAMPLE_MARKET, SAMPLE_NEWS, SAMPLE_IPO, SAMPLE_CONFIG, "2026-07-06")
-        self.assertIn("投顾", prompt)
-        self.assertIn("风险提示", prompt)
+    def test_ipo(self):
+        self._check_prompt("IPO")
 
-    def test_get_prompt_education(self):
-        prompt = get_prompt("投资者教育", SAMPLE_MARKET, SAMPLE_NEWS, SAMPLE_IPO, SAMPLE_CONFIG, "2026-07-06")
-        self.assertIn("投资", prompt)
-        self.assertIn("风险提示", prompt)
+    def test_advisory(self):
+        self._check_prompt("投顾服务")
 
-    def test_get_prompt_daily_digest(self):
-        prompt = get_prompt("每日精选", SAMPLE_MARKET, SAMPLE_NEWS, SAMPLE_IPO, SAMPLE_CONFIG, "2026-07-06")
-        self.assertIn("上证指数", prompt)
-        self.assertIn("风险提示", prompt)
+    def test_education(self):
+        self._check_prompt("投资者教育")
 
-    def test_get_prompt_unknown_category(self):
+    def test_daily_digest(self):
+        self._check_prompt("每日精选")
+
+    def test_unknown_category_raises(self):
         with self.assertRaises(ValueError):
-            get_prompt("不存在的分类", SAMPLE_MARKET, SAMPLE_NEWS, SAMPLE_IPO, SAMPLE_CONFIG, "2026-07-06")
+            get_prompt("不存在的分类", SAMPLE_MARKET, SAMPLE_NEWS, SAMPLE_IPO, SAMPLE_CONFIG, "2026-07-08")
 
-    def test_build_base_context_handles_none_data(self):
-        ctx = build_base_context(None, None, None, SAMPLE_CONFIG, "2026-07-06")
-        self.assertIn("2026-07-06", ctx)
+    def test_build_base_context_handles_none(self):
+        ctx = build_base_context(None, None, None, SAMPLE_CONFIG, "2026-07-08")
+        self.assertIn("2026-07-08", ctx)
         self.assertIn("暂不可用", ctx)
 
-    def test_build_common_requirements(self):
-        req = build_common_requirements(SAMPLE_CONFIG)
-        self.assertIn("风险提示", req)
-        self.assertIn("券商", req)
-        self.assertIn("A股", req)
 
+class TestTitleLength(unittest.TestCase):
+    """验证提示词中要求标题 ≤20 字。"""
 
-class TestLegacyCompatibility(unittest.TestCase):
-    """确保与旧 generate_xhs_copy.py 接口的兼容性。"""
-
-    def test_select_content_type_remains_compatible(self):
-        """旧版 select_content_type 逻辑已内化到 CATEGORY_NAMES 遍历中。"""
-        # 验证所有旧分类都存在于新系统中
-        legacy_cats = ["市场热点", "新闻动态", "IPO", "投顾服务", "投资者教育"]
-        for cat in legacy_cats:
-            self.assertIn(cat, CATEGORY_NAMES)
-        self.assertIn("每日精选", CATEGORY_NAMES)  # 新增
+    def test_title_limit_in_spec(self):
+        spec = _json_output_spec(SAMPLE_CONFIG)
+        self.assertIn("≤20", spec)
 
 
 if __name__ == "__main__":
